@@ -5,6 +5,7 @@ Bootstrap 区间估计的真实业务分析小型项目。完整模拟客户、�
 ## 模块与业务流程
 数据接入（JSON/CSV、字段验证、批次指纹）→ 参数化分析（异步 Python worker）→ 结果复核（指标、图形、明细、解释、批准）→ 定时分发（本地收件箱、CSV/JSON、SHA256）；另有业务总览和审计轨迹。
 三个贯穿全栈的实体：Dataset 数据批次、Job 分析任务、Report 分发计划；辅助 User、Audit、Delivery。
+持续偏差监测（探头监测页 `#/monitor`）：批次可选附 `probe`/`measured_on` 字段汇入跨批次读数池（Reading），按探头与测量日聚合日均残差；阈值与实验室结算截止日存于 MonitorSetting，预警 MonitorWarning 保留全部历史版本，通知 MonitorNotice 按版本进监测收件箱。连续三日超阈才预警、缺日中断、迟到回填重算并发布更正或撤销、同号同值不累加、同号异值整批拒绝；结算与通知幂等，中断重试不重复通知。规则详见 [BUSINESS.md](BUSINESS.md)。
 
 ## 快速启动
 ```bash

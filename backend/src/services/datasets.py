@@ -2,6 +2,7 @@ from fastapi import HTTPException
 from sqlalchemy import select
 from src.models import Dataset
 from src.services.business import metadata
+from src.services.monitor import ingest_dataset_readings
 from src.utils.serialization import checksum
 import math, time
 def create(db, data):
@@ -20,4 +21,6 @@ def create(db, data):
                 except (TypeError, ValueError, OverflowError): raise HTTPException(422, f'第 {index+1} 行 {c["label"]} 必须为有限数值')
     d=Dataset(name=name, source=data.source, records=data.records, checksum=checksum(data.records), created_at=time.time())
     db.add(d); db.flush()
+    # 同事务汇入持续监测：同号异值整批拒绝时本事务回滚，批次与读数都不会落库。
+    ingest_dataset_readings(db, d.id, data.records)
     return d

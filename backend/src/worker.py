@@ -7,6 +7,7 @@ from src.config.settings import REDIS_URL
 from src.models import Job, Dataset, Report
 from src.services.business import analyze
 from src.services.reports import deliver
+from src.services import monitor
 from src.services.audit import record
 logging.basicConfig(level=logging.INFO)
 def execute(job_id):
@@ -33,6 +34,11 @@ def tick():
         for r in db.scalars(select(Report).where(Report.enabled==True,Report.next_run<=time.time())):
             d=deliver(db,r)
             if d:record(db,'worker','report.delivered',{'id':r.id,'delivery':d.id})
+        # 持续监测：有脏标记（新批次/回填/阈值调整）或尚未初始化时重算。
+        # 结算与通知均幂等，进程中断后下一轮重试不会重复通知。
+        settings=monitor.get_settings(db)
+        if settings.dirty and settings.cutoff_date:
+            monitor.settle(db, actor='worker', reason='dirty-recompute')
         db.commit()
 def main():
     r=Redis.from_url(REDIS_URL,socket_timeout=3)
